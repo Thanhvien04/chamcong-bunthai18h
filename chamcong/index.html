@@ -156,6 +156,38 @@
 
         .stat-lbl { font-size: 11px; color: #666; font-weight: 600; }
 
+        /* KHUNG LỊCH SỬ BẤM CA CÁ NHÂN */
+        .history-box {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ccc;
+        }
+
+        .history-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .history-list {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 12px;
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 8px 12px;
+            border: 1px solid #eee;
+        }
+
+        .history-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .history-item:last-child { border-bottom: none; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -207,6 +239,12 @@
                     <div class="stat-val ot" id="userOtMins">0 phút</div>
                 </div>
             </div>
+
+            <!-- LỊCH SỬ CÁ NHÂN -->
+            <div class="history-box">
+                <div class="history-title">📋 Lịch sử bấm ca gần đây:</div>
+                <div class="history-list" id="historyList">Chưa có dữ liệu.</div>
+            </div>
         </div>
     </div>
 
@@ -229,6 +267,17 @@
             "Minh Hiếu": { in: "18:30", out: "04:00" },
             "Đức Thịnh": { in: "10:00", out: "18:00" },
             "Thanh Viên": { in: "18:30", out: "24:00" }
+        };
+
+        // TỰ ĐỘNG KHÓA TÊN THEO THIẾT BỊ NẾU ĐÃ CÓ LỊCH SỬ CHẤM CÔNG TRÊN MÁY NÀY
+        window.onload = function() {
+            const savedName = localStorage.getItem("registeredStaff");
+            if (savedName) {
+                const selectElement = document.getElementById("staffName");
+                selectElement.value = savedName;
+                selectElement.disabled = true;
+                validateStaff();
+            }
         };
 
         function parseMinutes(timeStr) {
@@ -266,9 +315,13 @@
             database.ref('attendance').orderByChild('name').equalTo(name).on('value', (snapshot) => {
                 const data = snapshot.val();
                 let workDays = 0, lateMins = 0, otMins = 0;
+                let historyItems = [];
 
                 if (data) {
-                    Object.keys(data).forEach(key => {
+                    const keys = Object.keys(data);
+                    
+                    // Lấy thống kê tháng
+                    keys.forEach(key => {
                         const item = data[key];
                         const itemDate = new Date(item.timestamp);
                         const itemMonth = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}`;
@@ -292,11 +345,23 @@
                             }
                         }
                     });
+
+                    // Lấy 10 lượt chấm gần nhất cho khung lịch sử
+                    keys.reverse().slice(0, 10).forEach(key => {
+                        const item = data[key];
+                        historyItems.push(`
+                            <div class="history-item">
+                                <span><b>${item.type}</b> lúc ${item.time}</span>
+                                <span style="color:${item.approvalStatus === 'Chờ duyệt' ? '#e67e22' : '#2e7d32'}">${item.approvalStatus || 'Đã duyệt'}</span>
+                            </div>
+                        `);
+                    });
                 }
 
                 document.getElementById('userWorkDays').innerText = `${workDays} ca`;
                 document.getElementById('userLateMins').innerText = `${lateMins} phút`;
                 document.getElementById('userOtMins').innerText = `${otMins} phút`;
+                document.getElementById('historyList').innerHTML = historyItems.length > 0 ? historyItems.join('') : 'Chưa có lượt bấm ca nào.';
             });
         }
 
@@ -307,6 +372,13 @@
 
             if (!name) {
                 alert('Vui lòng chọn tên nhân viên!');
+                return;
+            }
+
+            // KIỂM TRA RÀNG BUỘC THIẾT BỊ
+            const registeredStaff = localStorage.getItem("registeredStaff");
+            if (registeredStaff && registeredStaff !== name) {
+                alert(`⚠️ Máy này đã được khóa cho nhân viên "${registeredStaff}". Không thể chấm công hộ người khác!`);
                 return;
             }
 
@@ -357,6 +429,12 @@
                 approvalStatus: approvalStatus,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             }).then(() => {
+                // LƯU KHÓA THIẾT BỊ KHI CHẤM CÔNG THÀNH CÔNG LẦN ĐẦU
+                if (!registeredStaff) {
+                    localStorage.setItem("registeredStaff", name);
+                    document.getElementById("staffName").disabled = true;
+                }
+
                 let note = '';
                 if (type === 'Vào ca') {
                     if (lateMinutes > 0) note = `<br><span style="color:#d32f2f;">(Trễ ${lateMinutes} phút - ${approvalStatus})</span>`;
