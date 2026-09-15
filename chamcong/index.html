@@ -103,7 +103,12 @@
             box-shadow: 0 6px 15px rgba(0,0,0,0.25); 
         }
 
-        .btn:active { transform: translateY(0); }
+        .btn:disabled {
+            background: #cccccc !important;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
 
         .status-msg { 
             text-align: center; 
@@ -113,7 +118,6 @@
             animation: fadeIn 0.5s ease;
         }
 
-        /* THỐNG KÊ CÁ NHÂN KHUNG */
         .stats-box {
             margin-top: 20px;
             padding: 15px;
@@ -156,7 +160,6 @@
 
         .stat-lbl { font-size: 11px; color: #666; font-weight: 600; }
 
-        /* KHUNG LỊCH SỬ BẤM CA CÁ NHÂN */
         .history-box {
             margin-top: 15px;
             padding-top: 15px;
@@ -222,7 +225,6 @@
 
         <div id="status" class="status-msg"></div>
 
-        <!-- BẢNG THỐNG KÊ CÔNG CÁ NHÂN THÁNG NÀY -->
         <div class="stats-box" id="statsBox" style="display: none;">
             <div class="stats-title" id="statsTitle">📊 THỐNG KÊ THÁNG NÀY</div>
             <div class="stats-grid">
@@ -240,7 +242,6 @@
                 </div>
             </div>
 
-            <!-- LỊCH SỬ CÁ NHÂN -->
             <div class="history-box">
                 <div class="history-title">📋 Lịch sử bấm ca gần đây:</div>
                 <div class="history-list" id="historyList">Chưa có dữ liệu.</div>
@@ -269,7 +270,6 @@
             "Thanh Viên": { in: "18:30", out: "24:00" }
         };
 
-        // TỰ ĐỘNG KHÓA TÊN THEO THIẾT BỊ NẾU ĐÃ CÓ LỊCH SỬ CHẤM CÔNG TRÊN MÁY NÀY
         window.onload = function() {
             const savedName = localStorage.getItem("registeredStaff");
             if (savedName) {
@@ -278,7 +278,25 @@
                 selectElement.disabled = true;
                 validateStaff();
             }
+            checkDailyStatus();
         };
+
+        function getTodayString() {
+            const today = new Date();
+            return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+        }
+
+        // KIỂM TRA VÀ KHÓA NÚT "VÀO CA" NẾU HÔM NAY ĐÃ BẤM
+        function checkDailyStatus() {
+            const todayStr = getTodayString();
+            const lastCheckIn = localStorage.getItem("lastCheckInDate");
+
+            if (lastCheckIn === todayStr) {
+                const btnIn = document.getElementById("btnIn");
+                btnIn.disabled = true;
+                btnIn.innerText = "🔒 ĐÃ VÀO CA HÔM NAY";
+            }
+        }
 
         function parseMinutes(timeStr) {
             const [h, m] = timeStr.split(':').map(Number);
@@ -320,7 +338,6 @@
                 if (data) {
                     const keys = Object.keys(data);
                     
-                    // Lấy thống kê tháng
                     keys.forEach(key => {
                         const item = data[key];
                         const itemDate = new Date(item.timestamp);
@@ -346,7 +363,6 @@
                         }
                     });
 
-                    // Lấy 10 lượt chấm gần nhất cho khung lịch sử
                     keys.reverse().slice(0, 10).forEach(key => {
                         const item = data[key];
                         historyItems.push(`
@@ -369,17 +385,27 @@
             const name = document.getElementById('staffName').value;
             const reason = document.getElementById('reason').value.trim();
             const statusDiv = document.getElementById('status');
+            const todayStr = getTodayString();
 
             if (!name) {
                 alert('Vui lòng chọn tên nhân viên!');
                 return;
             }
 
-            // KIỂM TRA RÀNG BUỘC THIẾT BỊ
+            // 1. RÀNG BUỘC TÊN THEO MÁY
             const registeredStaff = localStorage.getItem("registeredStaff");
             if (registeredStaff && registeredStaff !== name) {
                 alert(`⚠️ Máy này đã được khóa cho nhân viên "${registeredStaff}". Không thể chấm công hộ người khác!`);
                 return;
+            }
+
+            // 2. RÀNG BUỘC 1 LẦN VÀO CA / NGÀY / MÁY
+            if (type === 'Vào ca') {
+                const lastCheckIn = localStorage.getItem("lastCheckInDate");
+                if (lastCheckIn === todayStr) {
+                    alert('⚠️ Thiết bị này đã bấm Vào ca hôm nay rồi! Không thể bấm thêm lần nữa.');
+                    return;
+                }
             }
 
             const now = new Date();
@@ -429,10 +455,15 @@
                 approvalStatus: approvalStatus,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             }).then(() => {
-                // LƯU KHÓA THIẾT BỊ KHI CHẤM CÔNG THÀNH CÔNG LẦN ĐẦU
+                // LƯU KHÓA TÊN VÀ KHÓA LẦN CHẤM TRONG NGÀY
                 if (!registeredStaff) {
                     localStorage.setItem("registeredStaff", name);
                     document.getElementById("staffName").disabled = true;
+                }
+
+                if (type === 'Vào ca') {
+                    localStorage.setItem("lastCheckInDate", todayStr);
+                    checkDailyStatus();
                 }
 
                 let note = '';
