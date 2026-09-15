@@ -65,9 +65,8 @@
             background: #fff;
         }
 
-        textarea { resize: vertical; height: 80px; }
+        textarea { resize: vertical; height: 70px; }
 
-        /* ĐỊNH DẠNG BOX CA LÀM QUY ĐỊNH */
         .shift-info { 
             font-size: 14px; 
             color: #2c3e50; 
@@ -108,11 +107,54 @@
 
         .status-msg { 
             text-align: center; 
-            margin-top: 18px; 
+            margin-top: 15px; 
             font-weight: 600; 
             font-size: 14px; 
             animation: fadeIn 0.5s ease;
         }
+
+        /* THỐNG KÊ CÁ NHÂN KHUNG */
+        .stats-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .stats-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #d32f2f;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 10px 5px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .stat-val {
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 4px;
+        }
+
+        .stat-val.work { color: #2e7d32; }
+        .stat-val.late { color: #d32f2f; }
+        .stat-val.ot { color: #1976d2; }
+
+        .stat-lbl { font-size: 11px; color: #666; font-weight: 600; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -147,6 +189,25 @@
         </div>
 
         <div id="status" class="status-msg"></div>
+
+        <!-- BẢNG THỐNG KÊ CÔNG CÁ NHÂN THÁNG NÀY -->
+        <div class="stats-box" id="statsBox" style="display: none;">
+            <div class="stats-title" id="statsTitle">📊 THỐNG KÊ THÁNG NÀY</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-lbl">Số Ngày Công</div>
+                    <div class="stat-val work" id="userWorkDays">0 ca</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-lbl">Trễ / Về Sớm</div>
+                    <div class="stat-val late" id="userLateMins">0 phút</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-lbl">Tăng Ca OT</div>
+                    <div class="stat-val ot" id="userOtMins">0 phút</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -179,10 +240,12 @@
             const name = document.getElementById('staffName').value;
             const statusDiv = document.getElementById('status');
             const shiftDisplay = document.getElementById('shiftDisplay');
+            const statsBox = document.getElementById('statsBox');
 
             if (!name) {
                 statusDiv.innerText = '';
                 shiftDisplay.innerText = 'Vui lòng chọn tên để xem ca làm việc';
+                statsBox.style.display = 'none';
                 return;
             }
 
@@ -190,6 +253,51 @@
             const displayOut = schedule.out === "24:00" ? "00:00" : schedule.out;
             shiftDisplay.innerHTML = `⏰ Ca làm quy định: <b>${schedule.in} - ${displayOut}</b>`;
             statusDiv.innerText = '';
+            statsBox.style.display = 'block';
+
+            loadUserStats(name);
+        }
+
+        function loadUserStats(name) {
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('statsTitle').innerText = `📊 BẢNG CÔNG THÁNG ${now.getMonth() + 1}/${now.getFullYear()} (${name})`;
+
+            database.ref('attendance').orderByChild('name').equalTo(name).on('value', (snapshot) => {
+                const data = snapshot.val();
+                let workDays = 0, lateMins = 0, otMins = 0;
+
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const item = data[key];
+                        const itemDate = new Date(item.timestamp);
+                        const itemMonth = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}`;
+
+                        if (itemMonth === currentMonth) {
+                            const isRejectedOrPending = (item.approvalStatus === 'Từ chối' || item.approvalStatus === 'Chờ duyệt');
+                            const isApproved = (item.approvalStatus === 'Đã duyệt' || !item.approvalStatus);
+
+                            if (item.type === 'Vào ca') {
+                                workDays += 1;
+                                if (item.lateMinutes > 0 && isRejectedOrPending) {
+                                    lateMins += item.lateMinutes;
+                                }
+                            } else if (item.type === 'Tan ca') {
+                                if (item.earlyMinutes > 0 && isRejectedOrPending) {
+                                    lateMins += item.earlyMinutes;
+                                }
+                                if (item.otMinutes > 0 && isApproved) {
+                                    otMins += item.otMinutes;
+                                }
+                            }
+                        }
+                    });
+                }
+
+                document.getElementById('userWorkDays').innerText = `${workDays} ca`;
+                document.getElementById('userLateMins').innerText = `${lateMins} phút`;
+                document.getElementById('userOtMins').innerText = `${otMins} phút`;
+            });
         }
 
         function checkIn(type) {
