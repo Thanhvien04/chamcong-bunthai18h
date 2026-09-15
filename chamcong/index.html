@@ -58,6 +58,14 @@
             background: #fdfdfd;
         }
 
+        select:disabled {
+            background: #e9ecef;
+            color: #495057;
+            cursor: not-allowed;
+            border-color: #ced4da;
+            font-weight: bold;
+        }
+
         select:focus, textarea:focus {
             border-color: #d32f2f;
             outline: none;
@@ -108,6 +116,13 @@
             cursor: not-allowed;
             transform: none !important;
             box-shadow: none !important;
+        }
+
+        .device-note {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
         }
 
         .status-msg { 
@@ -209,6 +224,7 @@
                 <option value="Đức Thịnh">Đức Thịnh</option>
                 <option value="Thanh Viên">Thanh Viên</option>
             </select>
+            <div id="deviceNote" class="device-note">⚠️ Điện thoại này sẽ gắn liền với tên bạn sau lần điểm danh đầu tiên.</div>
         </div>
 
         <div id="shiftDisplay" class="shift-info">Vui lòng chọn tên để xem ca làm việc</div>
@@ -270,32 +286,9 @@
             "Thanh Viên": { in: "18:30", out: "24:00" }
         };
 
-        window.onload = function() {
-            const savedName = localStorage.getItem("registeredStaff");
-            if (savedName) {
-                const selectElement = document.getElementById("staffName");
-                selectElement.value = savedName;
-                selectElement.disabled = true;
-                validateStaff();
-            }
-            checkDailyStatus();
-        };
-
         function getTodayString() {
             const today = new Date();
             return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-        }
-
-        // KIỂM TRA VÀ KHÓA NÚT "VÀO CA" NẾU HÔM NAY ĐÃ BẤM
-        function checkDailyStatus() {
-            const todayStr = getTodayString();
-            const lastCheckIn = localStorage.getItem("lastCheckInDate");
-
-            if (lastCheckIn === todayStr) {
-                const btnIn = document.getElementById("btnIn");
-                btnIn.disabled = true;
-                btnIn.innerText = "🔒 ĐÃ VÀO CA HÔM NAY";
-            }
         }
 
         function parseMinutes(timeStr) {
@@ -303,17 +296,49 @@
             return h * 60 + m;
         }
 
+        // TỰ ĐỘNG KHÓA TÊN VÀ ĐỌC TRẠNG THÁI KHI MỞ TRANG
+        window.onload = function() {
+            const boundName = localStorage.getItem("boundStaffName");
+            const selectElem = document.getElementById('staffName');
+            const noteElem = document.getElementById('deviceNote');
+
+            if (boundName) {
+                selectElem.value = boundName;
+                selectElem.disabled = true; // Khóa không cho chọn tên người khác
+                noteElem.innerText = `🔒 Điện thoại này đã đăng ký cố định cho: ${boundName}`;
+                noteElem.style.color = "#2e7d32";
+                noteElem.style.fontWeight = "bold";
+                validateStaff();
+            }
+        };
+
+        // KIỂM TRA HÔM NAY ĐÃ BẤM VÀO CA CHƯA (RESET MỖI NÀY)
+        function isCheckedInToday() {
+            const lastDate = localStorage.getItem("lastCheckInDate");
+            return lastDate === getTodayString();
+        }
+
         function validateStaff() {
             const name = document.getElementById('staffName').value;
             const statusDiv = document.getElementById('status');
             const shiftDisplay = document.getElementById('shiftDisplay');
             const statsBox = document.getElementById('statsBox');
+            const btnIn = document.getElementById('btnIn');
 
             if (!name) {
                 statusDiv.innerText = '';
                 shiftDisplay.innerText = 'Vui lòng chọn tên để xem ca làm việc';
                 statsBox.style.display = 'none';
                 return;
+            }
+
+            // Nếu hôm nay ĐÃ bấm vào ca -> Khóa nút Vào ca
+            if (isCheckedInToday()) {
+                btnIn.disabled = true;
+                btnIn.innerText = "🔒 ĐÃ VÀO CA HÔM NAY";
+            } else {
+                btnIn.disabled = false;
+                btnIn.innerText = "📍 VÀO CA";
             }
 
             const schedule = SHIFT_SCHEDULE[name];
@@ -382,30 +407,34 @@
         }
 
         function checkIn(type) {
-            const name = document.getElementById('staffName').value;
+            const selectElem = document.getElementById('staffName');
+            const name = selectElem.value;
             const reason = document.getElementById('reason').value.trim();
             const statusDiv = document.getElementById('status');
-            const todayStr = getTodayString();
 
             if (!name) {
                 alert('Vui lòng chọn tên nhân viên!');
                 return;
             }
 
-            // 1. RÀNG BUỘC TÊN THEO MÁY
-            const registeredStaff = localStorage.getItem("registeredStaff");
-            if (registeredStaff && registeredStaff !== name) {
-                alert(`⚠️ Máy này đã được khóa cho nhân viên "${registeredStaff}". Không thể chấm công hộ người khác!`);
-                return;
-            }
-
-            // 2. RÀNG BUỘC 1 LẦN VÀO CA / NGÀY / MÁY
-            if (type === 'Vào ca') {
-                const lastCheckIn = localStorage.getItem("lastCheckInDate");
-                if (lastCheckIn === todayStr) {
-                    alert('⚠️ Thiết bị này đã bấm Vào ca hôm nay rồi! Không thể bấm thêm lần nữa.');
+            // Lần đầu bấm -> Cố định thiết bị này với tên nhân viên đó luôn
+            const boundName = localStorage.getItem("boundStaffName");
+            if (!boundName) {
+                const confirmBind = confirm(`Xác nhận gắn cố định điện thoại này với nhân viên "${name}"?\nTừ sau điện thoại này không thể điểm danh cho người khác.`);
+                if (confirmBind) {
+                    localStorage.setItem("boundStaffName", name);
+                    selectElem.disabled = true;
+                    document.getElementById('deviceNote').innerText = `🔒 Điện thoại này đã đăng ký cố định cho: ${name}`;
+                    document.getElementById('deviceNote').style.color = "#2e7d32";
+                    document.getElementById('deviceNote').style.fontWeight = "bold";
+                } else {
                     return;
                 }
+            }
+
+            if (type === 'Vào ca' && isCheckedInToday()) {
+                alert(`⚠️ Bạn đã bấm Vào ca hôm nay rồi!`);
+                return;
             }
 
             const now = new Date();
@@ -455,15 +484,10 @@
                 approvalStatus: approvalStatus,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             }).then(() => {
-                // LƯU KHÓA TÊN VÀ KHÓA LẦN CHẤM TRONG NGÀY
-                if (!registeredStaff) {
-                    localStorage.setItem("registeredStaff", name);
-                    document.getElementById("staffName").disabled = true;
-                }
-
+                // Đánh dấu ngày hôm nay đã vào ca thành công
                 if (type === 'Vào ca') {
-                    localStorage.setItem("lastCheckInDate", todayStr);
-                    checkDailyStatus();
+                    localStorage.setItem("lastCheckInDate", getTodayString());
+                    validateStaff(); // Cập nhật lại giao diện để khóa nút Vào ca
                 }
 
                 let note = '';
