@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chấm Công - Bún Thái 18h</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+
+        body { 
+            background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
+                        url('bunthai-bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            padding: 20px 15px; 
+            color: #333; 
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card { 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 25px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+            width: 100%;
+            max-width: 480px; 
+            backdrop-filter: blur(5px);
+            animation: slideUp 0.6s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 { 
+            text-align: center; 
+            color: #d32f2f; 
+            margin-bottom: 20px; 
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .form-group { margin-bottom: 18px; }
+        label { font-weight: 600; display: block; margin-bottom: 8px; font-size: 14px; color: #444; }
+
+        select, textarea { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 8px; 
+            font-size: 15px; 
+            transition: all 0.3s ease;
+            background: #fdfdfd;
+        }
+
+        select:focus, textarea:focus {
+            border-color: #d32f2f;
+            outline: none;
+            box-shadow: 0 0 8px rgba(211, 47, 47, 0.2);
+            background: #fff;
+        }
+
+        textarea { resize: vertical; height: 80px; }
+
+        /* ĐỊNH DẠNG BOX CA LÀM QUY ĐỊNH */
+        .shift-info { 
+            font-size: 14px; 
+            color: #2c3e50; 
+            background: #eef2f5; 
+            padding: 12px 15px; 
+            border-radius: 8px; 
+            margin-bottom: 18px; 
+            text-align: center;
+            border-left: 5px solid #d32f2f;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+
+        .btn-group { display: flex; gap: 12px; }
+
+        .btn { 
+            flex: 1; 
+            color: white; 
+            border: none; 
+            padding: 14px; 
+            font-size: 15px; 
+            font-weight: bold; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .btn-in { background: linear-gradient(135deg, #2e7d32, #1b5e20); }
+        .btn-out { background: linear-gradient(135deg, #c62828, #b71c1c); }
+
+        .btn:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.25); 
+        }
+
+        .btn:active { transform: translateY(0); }
+
+        .status-msg { 
+            text-align: center; 
+            margin-top: 18px; 
+            font-weight: 600; 
+            font-size: 14px; 
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🍜 BÚN THÁI 18H 🍜</h2>
+
+        <div class="form-group">
+            <label for="staffName">Họ và tên nhân viên:</label>
+            <select id="staffName" onchange="validateStaff()">
+                <option value="">-- Chọn tên của bạn --</option>
+                <option value="Minh Hiếu">Minh Hiếu</option>
+                <option value="Đức Thịnh">Đức Thịnh</option>
+                <option value="Thanh Viên">Thanh Viên</option>
+            </select>
+        </div>
+
+        <div id="shiftDisplay" class="shift-info">Vui lòng chọn tên để xem ca làm việc</div>
+
+        <div class="form-group">
+            <label for="reason">Lý do (nếu đi trễ / về sớm):</label>
+            <textarea id="reason" placeholder="Nhập lý do tại đây (ví dụ: Kẹt xe, có việc gia đình...)"></textarea>
+        </div>
+
+        <div class="btn-group">
+            <button id="btnIn" class="btn btn-in" onclick="checkIn('Vào ca')">📍 VÀO CA</button>
+            <button id="btnOut" class="btn btn-out" onclick="checkIn('Tan ca')">🚪 TAN CA</button>
+        </div>
+
+        <div id="status" class="status-msg"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJ-DPekvwGgxoTWpg_vuY6Z-9H1EqJ2g4",
+            authDomain: "chamcong-bunthai18h.firebaseapp.com",
+            databaseURL: "https://chamcong-bunthai18h-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "chamcong-bunthai18h",
+            storageBucket: "chamcong-bunthai18h.firebasestorage.app",
+            messagingSenderId: "854858207205",
+            appId: "1:854858207205:web:22f26a84526f7130b8830c",
+            measurementId: "G-YMVKFVD194"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        const SHIFT_SCHEDULE = {
+            "Minh Hiếu": { in: "18:30", out: "04:00" },
+            "Đức Thịnh": { in: "10:00", out: "18:00" },
+            "Thanh Viên": { in: "18:30", out: "24:00" }
+        };
+
+        function parseMinutes(timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function validateStaff() {
+            const name = document.getElementById('staffName').value;
+            const statusDiv = document.getElementById('status');
+            const shiftDisplay = document.getElementById('shiftDisplay');
+
+            if (!name) {
+                statusDiv.innerText = '';
+                shiftDisplay.innerText = 'Vui lòng chọn tên để xem ca làm việc';
+                return;
+            }
+
+            const schedule = SHIFT_SCHEDULE[name];
+            const displayOut = schedule.out === "24:00" ? "00:00" : schedule.out;
+            shiftDisplay.innerHTML = `⏰ Ca làm quy định: <b>${schedule.in} - ${displayOut}</b>`;
+            statusDiv.innerText = '';
+        }
+
+        function checkIn(type) {
+            const name = document.getElementById('staffName').value;
+            const reason = document.getElementById('reason').value.trim();
+            const statusDiv = document.getElementById('status');
+
+            if (!name) {
+                alert('Vui lòng chọn tên nhân viên!');
+                return;
+            }
+
+            const now = new Date();
+            const timeString = now.toLocaleString('vi-VN');
+            const schedule = SHIFT_SCHEDULE[name];
+
+            const currentMins = now.getHours() * 60 + now.getMinutes();
+            let inMins = parseMinutes(schedule.in);
+            let outMins = parseMinutes(schedule.out);
+
+            if (outMins <= inMins) outMins += 24 * 60;
+
+            let lateMinutes = 0, earlyInMinutes = 0, earlyMinutes = 0, otMinutes = 0;
+
+            if (type === 'Vào ca') {
+                let actualIn = currentMins;
+                if (outMins > 24 * 60 && currentMins < 8 * 60) actualIn += 24 * 60;
+
+                if (actualIn > inMins) lateMinutes = actualIn - inMins;
+                else earlyInMinutes = inMins - actualIn;
+            } else if (type === 'Tan ca') {
+                let actualOut = currentMins;
+                if (outMins > 24 * 60 && currentMins < 10 * 60) actualOut += 24 * 60;
+
+                if (actualOut < outMins) earlyMinutes = outMins - actualOut;
+                else otMinutes = actualOut - outMins;
+            }
+
+            if ((lateMinutes > 0 || earlyMinutes > 0) && !reason) {
+                if (!confirm('Bạn đi trễ / về sớm nhưng chưa nhập lý do. Bạn có muốn gửi luôn không?')) {
+                    document.getElementById('reason').focus();
+                    return;
+                }
+            }
+
+            let approvalStatus = (lateMinutes > 0 || earlyMinutes > 0) ? 'Chờ duyệt' : 'Đã duyệt';
+
+            database.ref('attendance').push({
+                name: name,
+                type: type,
+                time: timeString,
+                lateMinutes: lateMinutes,
+                earlyInMinutes: earlyInMinutes,
+                earlyMinutes: earlyMinutes,
+                otMinutes: otMinutes,
+                reason: reason || 'Không có',
+                approvalStatus: approvalStatus,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                let note = '';
+                if (type === 'Vào ca') {
+                    if (lateMinutes > 0) note = `<br><span style="color:#d32f2f;">(Trễ ${lateMinutes} phút - ${approvalStatus})</span>`;
+                    else if (earlyInMinutes > 0) note = `<br><span style="color:#2e7d32;">(Đến sớm ${earlyInMinutes} phút)</span>`;
+                    else note = '<br><span style="color:#2e7d32;">(Đúng giờ vào ca)</span>';
+                } else if (type === 'Tan ca') {
+                    if (earlyMinutes > 0) note = `<br><span style="color:#e67e22;">(Về sớm ${earlyMinutes} phút - ${approvalStatus})</span>`;
+                    else if (otMinutes > 0) note = `<br><span style="color:#1976d2;">(Tăng ca ${otMinutes} phút)</span>`;
+                    else note = '<br><span style="color:#2e7d32;">(Đúng giờ tan ca)</span>';
+                }
+
+                statusDiv.innerHTML = `✅ <b>${name}</b> đã ${type} lúc ${timeString}${note}`;
+                document.getElementById('reason').value = '';
+            }).catch((error) => {
+                alert('Lỗi: ' + error.message);
+            });
+        }
+    </script>
+</body>
+</html>
