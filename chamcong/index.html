@@ -224,6 +224,9 @@
                 <option value="Đức Thịnh">Đức Thịnh</option>
                 <option value="Thanh Viên">Thanh Viên</option>
                  <option value="Phước Nguyễn">Phước Nguyễn</option>
+                <option value="Mẫn Nhi">Mẫn Nhi</option>
+                <option value="Thiện Bảo">Thiện Bảo</option>
+            
             </select>
             <div id="deviceNote" class="device-note">⚠️ Điện thoại này sẽ gắn liền với tên bạn sau lần điểm danh đầu tiên.</div>
         </div>
@@ -282,10 +285,12 @@
         const database = firebase.database();
 
         const SHIFT_SCHEDULE = {
-            "Minh Hiếu": { in: "18:30", out: "04:00" },
-            "Đức Thịnh": { in: "10:00", out: "18:00" },
+            "Minh Hiếu": { in: "18:30", out: "03:30" },
+            "Đức Thịnh": { in: "09:30", out: "18:15" },
             "Thanh Viên": { in: "18:30", out: "24:00" },
             "Phước Nguyễn": { in: "10:00", out: "18:00" },
+            "Mẫn Nhi": { in: "07:00", out: "11:00" },
+            "Thiện Bảo": { in: "18:00", out: "03:30" },
         };
 
         function getTodayString() {
