@@ -225,10 +225,9 @@
                 <option value="Thanh Viên">Thanh Viên</option>
                 <option value="Anh Thiện">Anh Thiện</option>
                 <option value="Như">Như</option>
-                                <option value="Trâm">Trâm</option>
-                 <option value="Dự">Dự</option>
-                 <option value="Tiến">Tiến</option>
-            
+                <option value="Trâm">Trâm</option>
+                <option value="Dự">Dự</option>
+                <option value="Tiến">Tiến</option>
             </select>
             <div id="deviceNote" class="device-note">⚠️ Điện thoại này sẽ gắn liền với tên bạn sau lần điểm danh đầu tiên.</div>
         </div>
@@ -292,9 +291,9 @@
             "Thanh Viên": { in: "18:30", out: "24:00" },
             "Anh Thiện": { in: "18:30", out: "03:30" },
             "Như": { in: "09:30", out: "18:30" },
-              "Trâm": { in: "18:00", out: "24:00" },
-             "Dự": { in: "18:30", out: "03:30" },
-             "Tiến": { in: "18:00", out: "23:00" },
+            "Trâm": { in: "18:00", out: "24:00" },
+            "Dự": { in: "18:30", out: "03:30" },
+            "Tiến": { in: "18:00", out: "23:00" }
         };
 
         function getTodayString() {
@@ -323,7 +322,7 @@
             }
         };
 
-        // KIỂM TRA HÔM NAY ĐÃ BẤM VÀO CA CHƯA (RESET MỖI NÀY)
+        // KIỂM TRA HÔM NAY ĐÃ BẤM VÀO CA CHƯA (RESET MỖI NGÀY)
         function isCheckedInToday() {
             const lastDate = localStorage.getItem("lastCheckInDate");
             return lastDate === getTodayString();
