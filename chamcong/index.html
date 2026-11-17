@@ -220,12 +220,14 @@
             <label for="staffName">Họ và tên nhân viên:</label>
             <select id="staffName" onchange="validateStaff()">
                 <option value="">-- Chọn tên của bạn --</option>
-                <option value="Minh Hiếu">Minh Hiếu</option>
+                <option value="Anh Bi">Anh Bi</option>
                 <option value="Đức Thịnh">Đức Thịnh</option>
                 <option value="Thanh Viên">Thanh Viên</option>
-                <option value="Mẫn Nhi">Mẫn Nhi</option>
-                <option value="Thiện Bảo">Thiện Bảo</option>
-                                <option value="Vy Lê">Vy Lê</option>
+                <option value="Anh Thiện">Anh Thiện</option>
+                <option value="Như">Như</option>
+                                <option value="Trâm">Trâm</option>
+                 <option value="Dự">Dự</option>
+                 <option value="Tiến">Tiến</option>
             
             </select>
             <div id="deviceNote" class="device-note">⚠️ Điện thoại này sẽ gắn liền với tên bạn sau lần điểm danh đầu tiên.</div>
@@ -285,12 +287,14 @@
         const database = firebase.database();
 
         const SHIFT_SCHEDULE = {
-            "Minh Hiếu": { in: "18:30", out: "03:30" },
-            "Đức Thịnh": { in: "09:30", out: "18:15" },
+            "Anh Bi": { in: "04:00", out: "10:00" },
+            "Đức Thịnh": { in: "09:30", out: "18:30" },
             "Thanh Viên": { in: "18:30", out: "24:00" },
-            "Mẫn Nhi": { in: "07:00", out: "11:00" },
-            "Thiện Bảo": { in: "18:00", out: "03:30" },
-              "Vy Lê": { in: "09:30", out: "17:00" },
+            "Anh Thiện": { in: "18:30", out: "03:30" },
+            "Như": { in: "09:30", out: 18:30" },
+              "Trâm": { in: "18:00", out: "24:00" },
+             "Dự": { in: "18:30", out: "03:30" },
+             "Tiến": { in: "18:00", out: "23:00" },
         };
 
         function getTodayString() {
